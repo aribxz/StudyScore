@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>AI Performance Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+```
+<style>
+    body {
+        margin: 0;
+        font-family: 'Segoe UI', sans-serif;
+        background: radial-gradient(circle at center, #0f172a, #020617);
+        color: white;
+    }
+
+
+    .container { display: flex; height: 100vh; }
+
+    .left { width: 40%; padding: 40px; }
+
+    .right {
+        width: 60%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .score { font-size: 60px; margin: 20px; }
+
+    .bar-container {
+        width: 60%;
+        height: 20px;
+        background: #1e293b;
+        border-radius: 20px;
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .bar {
+        height: 100%;
+        width: 0%;
+        background: #3b82f6;
+        transition: all 0.5s ease;
+    }
+
+    .insight { margin-bottom: 20px; opacity: 0.85; }
+
+    .option {
+        padding: 12px 16px;
+        border-radius: 12px;
+        background: #1e293b;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        margin: 5px;
+        display: inline-block;
+    }
+
+    .option:hover {
+        background: #334155;
+        transform: translateY(-4px) scale(1.05);
+    }
+
+    .active {
+        background: #3b82f6;
+        box-shadow: 0 0 15px rgba(59,130,246,0.6);
+        transform: scale(1.08);
+    }
+
+    /* 🔥 Mode Toggle */
+    .mode-toggle button {
+        margin: 5px;
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+        background: #1e293b;
+        color: white;
+        transition: 0.25s;
+    }
+
+    .mode-toggle button.active-btn {
+        background: #22c55e;
+        box-shadow: 0 0 10px rgba(34,197,94,0.6);
+    }
+
+    /* 🔥 Manual Inputs */
+    .manual-input {
+        margin-top: 20px;
+        display: none;
+    }
+
+    .manual-input input {
+        display: block;
+        margin: 8px 0;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        width: 200px;
+        background: #1e293b;
+        color: white;
+    }
+
+    .manual-input button {
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        background: #3b82f6;
+        color: white;
+        cursor: pointer;
+    }
+
+    /* graph buttons */
+    .graph-buttons button {
+        margin: 5px;
+        padding: 10px;
+        border-radius: 10px;
+        border: none;
+        background: #1e293b;
+        color: white;
+        cursor: pointer;
+        transition: 0.25s;
+    }
+
+    .graph-buttons button:hover {
+        transform: translateY(-3px);
+    }
+
+    .graph-buttons button.active-btn {
+        background: #22c55e;
+    }
+
+    body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    background-image: url("/static/actual_nightsky.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+
+    opacity: 0.3;
+
+    z-index: -1;
+}
+
+</style>
+```
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="left">
+
+<!-- 🔥 Mode Switch -->
+
+<div class="mode-toggle">
+<button onclick="setMode('buttons')" class="active-btn" id="btnMode">Buttons</button>
+<button onclick="setMode('manual')" id="manualMode">Manual</button>
+</div>
+
+<!-- 🔥 BUTTON INPUTS -->
+
+<div id="buttonInputs">
+
+<h3>Hours</h3>
+<div id="hours">
+<div class="option" onclick="select(this,'hours',2)">Low</div>
+<div class="option" onclick="select(this,'hours',5)">Med</div>
+<div class="option" onclick="select(this,'hours',9)">High</div>
+</div>
+
+<h3>Tests</h3>
+<div id="tests">
+<div class="option" onclick="select(this,'tests',2)">Low</div>
+<div class="option" onclick="select(this,'tests',6)">Med</div>
+<div class="option" onclick="select(this,'tests',12)">High</div>
+</div>
+
+<h3>Sleep</h3>
+<div id="sleep">
+<div class="option" onclick="select(this,'sleep',4)">Bad</div>
+<div class="option" onclick="select(this,'sleep',7)">Good</div>
+<div class="option" onclick="select(this,'sleep',9)">Perfect</div>
+</div>
+
+<h3>Phone</h3>
+<div id="phone">
+<div class="option" onclick="select(this,'phone',8)">High</div>
+<div class="option" onclick="select(this,'phone',4)">Med</div>
+<div class="option" onclick="select(this,'phone',1)">Low</div>
+</div>
+
+</div>
+
+<!-- 🔥 MANUAL INPUT -->
+
+<div class="manual-input" id="manualInput">
+<input type="number" placeholder="Hours" id="m_hours">
+<input type="number" placeholder="Tests" id="m_tests">
+<input type="number" placeholder="Sleep" id="m_sleep">
+<input type="number" placeholder="Phone" id="m_phone">
+<button onclick="manualPredict()">Predict</button>
+</div>
+
+</div>
+
+<div class="right">
+
+<div class="score" id="score">--</div>
+
+<div class="bar-container">
+<div class="bar" id="bar"></div>
+</div>
+
+<div id="insight" class="insight"></div>
+
+<div class="graph-buttons">
+<button onclick="activateBtn(this); showMain()">Overview</button>
+<button onclick="activateBtn(this); showGraph('hours')">Hours</button>
+<button onclick="activateBtn(this); showGraph('tests')">Tests</button>
+<button onclick="activateBtn(this); showGraph('sleep')">Sleep</button>
+<button onclick="activateBtn(this); showGraph('phone')">Phone</button>
+</div>
+
+<canvas id="chart"></canvas>
+
+</div>
+
+</div>
+
+<script>
+let data = {hours:null,tests:null,sleep:null,phone:null};
+let chart, savedGraphs;
+
+/* 🔥 Mode Switch */
+function setMode(mode){
+document.getElementById("buttonInputs").style.display = mode==="buttons"?"block":"none";
+document.getElementById("manualInput").style.display = mode==="manual"?"block":"none";
+
+document.querySelectorAll(".mode-toggle button").forEach(b=>b.classList.remove("active-btn"));
+document.getElementById(mode==="buttons"?"btnMode":"manualMode").classList.add("active-btn");
+}
+
+/* 🔥 Button Selection */
+function select(el,type,value){
+document.querySelectorAll("#"+type+" .option").forEach(o=>o.classList.remove("active"));
+el.classList.add("active");
+data[type]=value;
+
+if(data.hours && data.tests && data.sleep && data.phone){
+predict(data);
+}
+}
+
+/* 🔥 Manual Predict */
+function manualPredict(){
+data.hours = document.getElementById("m_hours").value;
+data.tests = document.getElementById("m_tests").value;
+data.sleep = document.getElementById("m_sleep").value;
+data.phone = document.getElementById("m_phone").value;
+
+predict(data);
+}
+
+/* 🔥 Predict */
+function predict(payload){
+fetch("/predict",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(payload)
+})
+.then(res=>res.json())
+.then(res=>{
+document.getElementById("score").innerText=res.score;
+document.getElementById("insight").innerText=res.insight;
+
+savedGraphs=res;
+drawBar(res.score);
+showMain();
+});
+}
+
+function drawBar(score){
+document.getElementById("bar").style.width=score+"%";
+}
+
+function activateBtn(btn){
+document.querySelectorAll(".graph-buttons button").forEach(b=>b.classList.remove("active-btn"));
+btn.classList.add("active-btn");
+}
+
+function showMain(){
+updateChart(savedGraphs.graph);
+}
+
+function showGraph(type){
+let values=savedGraphs.individual_graphs[type];
+let labels=[];
+
+if(type==="hours"){ for(let i=1;i<=10;i++) labels.push(i); }
+if(type==="tests"){ for(let i=1;i<=15;i++) labels.push(i); }
+if(type==="sleep"){ for(let i=3;i<=10;i++) labels.push(i); }
+if(type==="phone"){ for(let i=1;i<=10;i++) labels.push(i); }
+
+updateChart(Object.fromEntries(labels.map((l,i)=>[l,values[i]])));
+}
+
+function updateChart(dataObj){
+let labels=Object.keys(dataObj);
+let values=Object.values(dataObj);
+
+if(chart){ chart.destroy(); }
+
+let ctx=document.getElementById("chart");
+
+chart=new Chart(ctx,{
+type:"line",
+data:{labels:labels,datasets:[{data:values}]},
+options:{plugins:{legend:{display:false}},animation:{duration:800}}
+});
+}
+</script>
+
+</body>
+</html>

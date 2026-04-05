@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudyScore — AI Performance Predictor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg:       #020818;
+      --bg2:      #050f2e;
+      --surface:  rgba(255,255,255,0.04);
+      --border:   rgba(255,255,255,0.08);
+      --blue:     #3b82f6;
+      --blue-glow:rgba(59,130,246,0.35);
+      --cyan:     #06b6d4;
+      --green:    #22c55e;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --font-display: 'Syne', sans-serif;
+      --font-body:    'Space Grotesk', sans-serif;
+      --font-mono:    'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      overflow-x: hidden;
+    }
+
+    /* ── STAR FIELD ─────────────────────────────────────────── */
+    #stars {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(ellipse at 20% 30%, #0d1f5e 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 70%, #0a1a4a 0%, transparent 55%),
+                  var(--bg);
+    }
+    #stars canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+    /* ── NAV ─────────────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 48px;
+      background: rgba(2,8,24,0.7);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-family: var(--font-display);
+      font-size: 20px; font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fff 30%, var(--cyan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a {
+      color: var(--muted); text-decoration: none;
+      font-size: 14px; font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      padding: 9px 22px; border-radius: 8px;
+      background: var(--blue); color: #fff;
+      text-decoration: none; font-size: 14px; font-weight: 600;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .nav-cta:hover { opacity: 0.85; transform: translateY(-1px); }
+
+    /* ── SECTIONS ────────────────────────────────────────────── */
+    section { position: relative; z-index: 1; }
+
+    /* ── HERO ────────────────────────────────────────────────── */
+    #hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 100px;
+      border: 1px solid rgba(59,130,246,0.35);
+      background: rgba(59,130,246,0.08);
+      font-size: 13px; color: var(--blue);
+      font-weight: 500; margin-bottom: 32px;
+      animation: fadeUp 0.6s ease both;
+    }
+    .hero-badge span { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); display: inline-block; animation: pulse 1.5s infinite; }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(52px, 8vw, 96px);
+      font-weight: 800;
+      line-height: 1.0;
+      letter-spacing: -2px;
+      margin-bottom: 24px;
+      animation: fadeUp 0.6s ease 0.1s both;
+    }
+    .hero-title .accent {
+      background: linear-gradient(135deg, var(--blue) 0%, var(--cyan) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-sub {
+      max-width: 560px;
+      font-size: 18px; color: var(--muted); line-height: 1.7;
+      margin-bottom: 48px;
+      animation: fadeUp 0.6s ease 0.2s both;
+    }
+    .hero-btns {
+      display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+      animation: fadeUp 0.6s ease 0.3s both;
+    }
+    .btn-primary {
+      padding: 14px 32px; border-radius: 10px;
+      background: var(--blue); color: #fff;
+      text-decoration: none; font-size: 15px; font-weight: 600;
+      transition: all 0.25s;
+      box-shadow: 0 0 24px var(--blue-glow);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 40px var(--blue-glow); }
+    .btn-ghost {
+      padding: 14px 32px; border-radius: 10px;
+      border: 1px solid var(--border); color: var(--text);
+      text-decoration: none; font-size: 15px; font-weight: 500;
+      transition: all 0.25s; background: var(--surface);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
+
+    .hero-stats {
+      display: flex; gap: 48px; margin-top: 80px;
+      animation: fadeUp 0.6s ease 0.4s both;
+    }
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 36px; font-weight: 800;
+      background: linear-gradient(135deg, #fff, var(--cyan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .stat-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    /* glow orb */
+    .orb {
+      position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none;
+    }
+    .orb-1 { width: 600px; height: 600px; top: -100px; left: 50%; transform: translateX(-50%);
+              background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%); }
+    .orb-2 { width: 400px; height: 400px; bottom: 0; right: 5%;
+              background: radial-gradient(circle, rgba(6,182,212,0.08) 0%, transparent 70%); }
+
+    /* ── DASHBOARD ───────────────────────────────────────────── */
+    #dashboard {
+      padding: 80px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .section-label {
+      font-size: 12px; font-weight: 600; letter-spacing: 3px;
+      text-transform: uppercase; color: var(--blue); margin-bottom: 12px;
+    }
+    .section-title {
+      font-family: var(--font-display); font-size: 40px; font-weight: 800;
+      letter-spacing: -1px; margin-bottom: 8px;
+    }
+    .section-desc { color: var(--muted); font-size: 16px; max-width: 500px; margin-bottom: 56px; }
+
+    .dash-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 24px;
+    }
+
+    /* glass card */
+    .glass {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      backdrop-filter: blur(12px);
+      padding: 28px;
+    }
+
+    /* ── INPUT PANEL ─────────────────────────────────────────── */
+    .mode-tabs {
+      display: flex; gap: 6px; margin-bottom: 28px;
+      background: rgba(0,0,0,0.3); padding: 4px; border-radius: 10px;
+    }
+    .mode-tab {
+      flex: 1; padding: 8px; border-radius: 7px; border: none;
+      background: transparent; color: var(--muted); cursor: pointer;
+      font-family: var(--font-body); font-size: 13px; font-weight: 500;
+      transition: all 0.2s;
+    }
+    .mode-tab.active { background: var(--blue); color: #fff; }
+
+    .input-group { margin-bottom: 20px; }
+    .input-group label {
+      display: block; font-size: 12px; font-weight: 600;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 10px;
+    }
+    .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip {
+      padding: 9px 18px; border-radius: 8px;
+      background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+      color: var(--text); cursor: pointer; font-size: 13px; font-weight: 500;
+      font-family: var(--font-body); transition: all 0.2s;
+    }
+    .chip:hover { background: rgba(255,255,255,0.1); transform: translateY(-1px); }
+    .chip.active {
+      background: rgba(59,130,246,0.2); border-color: var(--blue);
+      color: #93c5fd;
+      box-shadow: 0 0 10px rgba(59,130,246,0.2);
+    }
+
+    /* manual inputs */
+    #manualPanel { display: none; }
+    .manual-fields { display: flex; flex-direction: column; gap: 12px; }
+    .field-row {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .field-row label {
+      width: 80px; font-size: 12px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
+      flex-shrink: 0;
+    }
+    .field-row input {
+      flex: 1; padding: 10px 14px; border-radius: 8px;
+      background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font-mono); font-size: 13px;
+      outline: none; transition: border-color 0.2s;
+    }
+    .field-row input:focus { border-color: var(--blue); }
+    .field-row input::placeholder { color: var(--muted); }
+
+    .predict-btn {
+      width: 100%; margin-top: 20px; padding: 13px;
+      border-radius: 10px; border: none;
+      background: var(--blue); color: #fff;
+      font-family: var(--font-body); font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.25s;
+      box-shadow: 0 0 20px var(--blue-glow);
+    }
+    .predict-btn:hover { transform: translateY(-2px); box-shadow: 0 0 32px var(--blue-glow); }
+
+    /* ── RESULTS PANEL ───────────────────────────────────────── */
+    .results-panel { display: flex; flex-direction: column; gap: 20px; }
+
+    .score-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 28px;
+      display: flex; align-items: center; gap: 28px;
+    }
+    .score-ring-wrap { position: relative; flex-shrink: 0; width: 120px; height: 120px; }
+    .score-ring-wrap canvas { display: block; }
+    .score-center {
+      position: absolute; inset: 0; z-index: 2;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .score-num {
+      font-family: var(--font-display); font-size: 28px; font-weight: 800;
+      color: #fff;
+      line-height: 1;
+    }
+    .score-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .score-meta { flex: 1; }
+    .score-grade {
+      font-family: var(--font-display); font-size: 48px; font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .score-insight { font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+    /* sim cards */
+    .sim-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+    .sim-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px;
+    }
+    .sim-card .sim-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+    .sim-card .sim-val {
+      font-family: var(--font-display); font-size: 22px; font-weight: 700;
+    }
+    .sim-card .sim-delta { font-size: 12px; margin-top: 3px; }
+    .pos { color: var(--green); }
+    .neg { color: #f87171; }
+
+    /* chart area */
+    .chart-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 24px;
+    }
+    .chart-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .chart-title { font-size: 14px; font-weight: 600; }
+    .chart-tabs { display: flex; gap: 6px; }
+    .ctab {
+      padding: 6px 12px; border-radius: 6px; border: none;
+      background: transparent; color: var(--muted);
+      font-family: var(--font-body); font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .ctab:hover { color: var(--text); }
+    .ctab.active { background: rgba(59,130,246,0.15); color: var(--blue); }
+
+    /* placeholder state */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 280px; color: var(--muted); text-align: center; gap: 12px;
+    }
+    .empty-icon { font-size: 40px; opacity: 0.4; }
+
+    /* ── HOW IT WORKS ────────────────────────────────────────── */
+    #how-it-works {
+      padding: 100px 24px;
+      max-width: 1100px; margin: 0 auto;
+    }
+    .hw-grid {
+      display: grid; grid-template-columns: 1.1fr 1fr; gap: 64px; align-items: start;
+    }
+    .formula-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px; margin-top: 24px;
+    }
+    .formula-box code {
+      font-family: var(--font-mono); font-size: 13px;
+      color: #93c5fd; line-height: 2;
+      display: block; white-space: pre-wrap;
+    }
+    .feature-list { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
+    .feat-item {
+      display: flex; gap: 16px; align-items: flex-start;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px;
+      transition: border-color 0.2s;
+    }
+    .feat-item:hover { border-color: rgba(59,130,246,0.3); }
+    .feat-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .feat-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .feat-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* ── FOOTER ──────────────────────────────────────────────── */
+    footer {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 32px 48px;
+      display: flex; align-items: center; justify-content: space-between;
+      color: var(--muted); font-size: 13px;
+    }
+
+    /* ── ANIMATIONS ──────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: 0.4; }
+    }
+    @keyframes shimmer {
+      from { background-position: -200% center; }
+      to   { background-position: 200% center; }
+    }
+
+    /* result reveal */
+    .reveal { animation: fadeUp 0.4s ease both; }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #1e3a6e; border-radius: 3px; }
+
+    @media (max-width: 900px) {
+      .dash-grid, .hw-grid { grid-template-columns: 1fr; }
+      .sim-grid { grid-template-columns: 1fr 1fr; }
+      nav { padding: 16px 24px; }
+      .nav-links { display: none; }
+      .hero-stats { gap: 24px; flex-wrap: wrap; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- STAR FIELD -->
+<div id="stars"><canvas id="starsCanvas"></canvas></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">StudyScore</div>
+  <div class="nav-links">
+    <a href="#hero">Home</a>
+    <a href="#dashboard">Predictor</a>
+    <a href="#how-it-works">Model</a>
+  </div>
+  <a href="#dashboard" class="nav-cta">Try it now →</a>
+</nav>
+
+<!-- ══════════════════ HERO ══════════════════ -->
+<section id="hero">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="hero-badge"><span></span> Powered by Linear Regression</div>
+  <h1 class="hero-title">
+    Predict your<br><span class="accent">exam score</span>
+  </h1>
+  <p class="hero-sub">
+    Enter your study habits and instantly see your predicted score —
+    plus personalised what-if insights to help you improve.
+  </p>
+  <div class="hero-btns">
+    <a href="#dashboard" class="btn-primary">Get my score</a>
+    <a href="#how-it-works" class="btn-ghost">How it works</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat-item">
+      <div class="stat-num">4</div>
+      <div class="stat-label">Input factors</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">3</div>
+      <div class="stat-label">What-if scenarios</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">200</div>
+      <div class="stat-label">Training samples</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">7</div>
+      <div class="stat-label">Engineered features</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ DASHBOARD ══════════════════ -->
+<section id="dashboard">
+  <div class="section-label">Prediction Engine</div>
+  <div class="section-title">Run your analysis</div>
+  <div class="section-desc">Choose your inputs and the model will predict your score in real time.</div>
+
+  <div class="dash-grid">
+
+    <!-- INPUT PANEL -->
+    <div class="glass">
+      <div class="mode-tabs">
+        <button class="mode-tab active" onclick="setMode('buttons',this)">Quick Select</button>
+        <button class="mode-tab" onclick="setMode('manual',this)">Manual Input</button>
+      </div>
+
+      <!-- BUTTON MODE -->
+      <div id="buttonPanel">
+        <div class="input-group">
+          <label>Hours Studied / day</label>
+          <div class="chip-row" id="c-hours">
+            <button class="chip" onclick="pick(this,'hours',2)">2 hrs<br><small style="color:var(--muted)">Low</small></button>
+            <button class="chip" onclick="pick(this,'hours',5)">5 hrs<br><small style="color:var(--muted)">Medium</small></button>
+            <button class="chip" onclick="pick(this,'hours',9)">9 hrs<br><small style="color:var(--muted)">High</small></button>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>Practice Tests taken</label>
+          <div class="chip-row" id="c-tests">
+            <button class="chip" onclick="pick(this,'tests',2)">2<br><small style="color:var(--muted)">Few</small></button>
+            <button class="chip" onclick="pick(this,'tests',6)">6<br><small style="color:var(--muted)">Some</small></button>
+            <button class="chip" onclick="pick(this,'tests',12)">12<br><small style="color:var(--muted)">Many</small></button>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>Sleep hours / night</label>
+          <div class="chip-row" id="c-sleep">
+            <button class="chip" onclick="pick(this,'sleep',4)">4 hrs<br><small style="color:var(--muted)">Bad</small></button>
+            <button class="chip" onclick="pick(this,'sleep',7)">7 hrs<br><small style="color:var(--muted)">Good</small></button>
+            <button class="chip" onclick="pick(this,'sleep',9)">9 hrs<br><small style="color:var(--muted)">Great</small></button>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>Phone usage (hrs/day)</label>
+          <div class="chip-row" id="c-phone">
+            <button class="chip" onclick="pick(this,'phone',8)">8 hrs<br><small style="color:var(--muted)">High</small></button>
+            <button class="chip" onclick="pick(this,'phone',4)">4 hrs<br><small style="color:var(--muted)">Medium</small></button>
+            <button class="chip" onclick="pick(this,'phone',1)">1 hr<br><small style="color:var(--muted)">Low</small></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MANUAL MODE -->
+      <div id="manualPanel">
+        <div class="manual-fields">
+          <div class="field-row"><label>Hours</label><input type="number" id="m_hours" placeholder="1 – 14" min="0" max="14"></div>
+          <div class="field-row"><label>Tests</label><input type="number" id="m_tests" placeholder="0 – 20" min="0" max="20"></div>
+          <div class="field-row"><label>Sleep</label><input type="number" id="m_sleep" placeholder="4 – 12" min="0" max="12"></div>
+          <div class="field-row"><label>Phone</label><input type="number" id="m_phone" placeholder="0 – 10" min="0" max="10"></div>
+        </div>
+        <button class="predict-btn" onclick="manualPredict()">Predict Score →</button>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results-panel" id="resultsPanel">
+
+      <!-- Empty state -->
+      <div class="glass empty-state" id="emptyState">
+        <div class="empty-icon">🎯</div>
+        <div style="font-size:16px;font-weight:600;">Select your inputs</div>
+        <div style="font-size:13px;color:var(--muted);">Your predicted score will appear here</div>
+      </div>
+
+      <!-- Score card (hidden until result) -->
+      <div class="score-card" id="scoreCard" style="display:none;">
+        <div class="score-ring-wrap">
+          <canvas id="ringCanvas" width="120" height="120"></canvas>
+          <div class="score-center">
+            <div class="score-num" id="scoreNum">--</div>
+            <div class="score-label">/ 100</div>
+          </div>
+        </div>
+        <div class="score-meta">
+          <div class="score-grade" id="scoreGrade">--</div>
+          <div class="score-insight" id="scoreInsight">Select your inputs to get your prediction.</div>
+        </div>
+      </div>
+
+      <!-- Scenario cards -->
+      <div class="sim-grid" id="simGrid" style="display:none;">
+        <div class="sim-card">
+          <div class="sim-label">😴 Better Sleep</div>
+          <div class="sim-val" id="simSleep">--</div>
+          <div class="sim-delta" id="simSleepD">--</div>
+        </div>
+        <div class="sim-card">
+          <div class="sim-label">📱 Less Phone</div>
+          <div class="sim-val" id="simPhone">--</div>
+          <div class="sim-delta" id="simPhoneD">--</div>
+        </div>
+        <div class="sim-card">
+          <div class="sim-label">📚 +2 Study hrs</div>
+          <div class="sim-val" id="simStudy">--</div>
+          <div class="sim-delta" id="simStudyD">--</div>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="chart-card" id="chartCard" style="display:none;">
+        <div class="chart-header">
+          <div class="chart-title">Score vs. Input</div>
+          <div class="chart-tabs">
+            <button class="ctab active" onclick="activateCtab(this);showMain()">Overview</button>
+            <button class="ctab" onclick="activateCtab(this);showGraph('hours')">Hours</button>
+            <button class="ctab" onclick="activateCtab(this);showGraph('tests')">Tests</button>
+            <button class="ctab" onclick="activateCtab(this);showGraph('sleep')">Sleep</button>
+            <button class="ctab" onclick="activateCtab(this);showGraph('phone')">Phone</button>
+          </div>
+        </div>
+        <canvas id="mainChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ HOW IT WORKS ══════════════════ -->
+<section id="how-it-works">
+  <div class="section-label">Under the Hood</div>
+  <div class="section-title">How the model works</div>
+  <div class="section-desc" style="margin-bottom:0">A peek at the feature engineering and maths behind the predictions.</div>
+
+  <div class="hw-grid" style="margin-top:48px;">
+
+    <div>
+      <h3 style="font-family:var(--font-display);font-size:22px;margin-bottom:12px;">The scoring formula</h3>
+      <p style="color:var(--muted);font-size:14px;line-height:1.7;">
+        The model was trained on 200 synthetic student records using scikit-learn's
+        <strong style="color:var(--text)">LinearRegression</strong>. The key insight is that
+        study hours don't have a fixed effect — they interact with sleep quality.
+        Studying while sleep-deprived yields far lower returns than studying well-rested.
+      </p>
+      <div class="formula-box">
+        <code>Score =
+  study_effect         # 2×, 4×, or 5× hours (by sleep)
+  + 3 × practice_tests
+  − 4 × phone_usage
+  − 10 × sleep_bad
+  + 10 × sleep_good
+  + noise</code>
+      </div>
+      <p style="color:var(--muted);font-size:13px;margin-top:16px;line-height:1.6;">
+        Sleep is encoded as two binary flags: <code style="color:#93c5fd">sleep_bad</code> (&lt;6 hrs) and
+        <code style="color:#93c5fd">sleep_good</code> (6–8 hrs). These interact with study hours to
+        create non-linear effects inside a linear model — a technique called
+        <strong style="color:var(--text)">feature engineering</strong>.
+      </p>
+    </div>
+
+    <div>
+      <h3 style="font-family:var(--font-display);font-size:22px;margin-bottom:12px;">The 7 model features</h3>
+      <div class="feature-list">
+        <div class="feat-item">
+          <div class="feat-icon">📖</div>
+          <div>
+            <div class="feat-name">Hours Studied</div>
+            <div class="feat-desc">Raw hours per day. Multiplied by 2, 4, or 5 depending on sleep quality.</div>
+          </div>
+        </div>
+        <div class="feat-item">
+          <div class="feat-icon">📝</div>
+          <div>
+            <div class="feat-name">Practice Tests</div>
+            <div class="feat-desc">Each test adds ~3 points. Strong linear relationship.</div>
+          </div>
+        </div>
+        <div class="feat-item">
+          <div class="feat-icon">😴</div>
+          <div>
+            <div class="feat-name">Sleep Bad + Sleep Good (flags)</div>
+            <div class="feat-desc">Two binary features encoding whether sleep is in the &lt;6 or 6–8 hour range.</div>
+          </div>
+        </div>
+        <div class="feat-item">
+          <div class="feat-icon">⚡</div>
+          <div>
+            <div class="feat-name">Hours × Sleep Bad / Good (interactions)</div>
+            <div class="feat-desc">The key feature engineering step — captures how sleep modifies study effectiveness.</div>
+          </div>
+        </div>
+        <div class="feat-item">
+          <div class="feat-icon">📱</div>
+          <div>
+            <div class="feat-name">Phone Usage</div>
+            <div class="feat-desc">Each hour of phone usage removes ~4 points from the predicted score.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div>Built with Flask + scikit-learn · Linear Regression</div>
+  <div style="color:var(--muted)">StudyScore — ML Project - Arib</div>
+</footer>
+
+<!-- ══════════════════ SCRIPTS ══════════════════ -->
+<script>
+/* ── STARS ─────────────────────────────────────────────────── */
+(function(){
+  const canvas = document.getElementById('starsCanvas');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  function resize(){ canvas.width=innerWidth; canvas.height=innerHeight; }
+  function init(){
+    stars=[];
+    for(let i=0;i<220;i++){
+      stars.push({
+        x:Math.random()*canvas.width,
+        y:Math.random()*canvas.height,
+        r:Math.random()*1.4+0.3,
+        a:Math.random(),
+        s:Math.random()*0.005+0.002
+      });
+    }
+  }
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    stars.forEach(s=>{
+      s.a+=s.s; if(s.a>1||s.a<0) s.s*=-1;
+      ctx.beginPath();
+      ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(180,210,255,${s.a*0.8})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize',()=>{resize();init();});
+  resize(); init(); draw();
+})();
+
+/* ── STATE ─────────────────────────────────────────────────── */
+const sel = {hours:null,tests:null,sleep:null,phone:null};
+let savedRes = null;
+let ringChart = null;
+let mainChart = null;
+
+/* ── MODE SWITCH ──────────────────────────────────────────── */
+function setMode(mode,btn){
+  document.getElementById('buttonPanel').style.display = mode==='buttons'?'block':'none';
+  document.getElementById('manualPanel').style.display  = mode==='manual'?'block':'none';
+  document.querySelectorAll('.mode-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+/* ── CHIP SELECTION ───────────────────────────────────────── */
+function pick(el,type,val){
+  document.querySelectorAll('#c-'+type+' .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  sel[type]=val;
+  if(sel.hours&&sel.tests&&sel.sleep&&sel.phone) callPredict(sel);
+}
+
+/* ── MANUAL PREDICT ───────────────────────────────────────── */
+function manualPredict(){
+  const d={
+    hours: +document.getElementById('m_hours').value,
+    tests: +document.getElementById('m_tests').value,
+    sleep: +document.getElementById('m_sleep').value,
+    phone: +document.getElementById('m_phone').value
+  };
+  if(Object.values(d).some(v=>isNaN(v)||v==='')){ return; }
+  callPredict(d);
+}
+
+/* ── API CALL ─────────────────────────────────────────────── */
+function callPredict(payload){
+  fetch('/predict',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  })
+  .then(r=>r.json())
+  .then(res=>{ savedRes=res; renderResults(res); });
+}
+
+/* ── RENDER ───────────────────────────────────────────────── */
+function renderResults(res){
+  const score = res.score;
+
+  // show cards
+  document.getElementById('emptyState').style.display='none';
+  ['scoreCard','simGrid','chartCard'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.style.display= id==='simGrid'?'grid':'flex';
+    if(id==='chartCard') el.style.display='block';
+    el.classList.add('reveal');
+  });
+
+  // ring
+  document.getElementById('scoreNum').textContent = score;
+  drawRing(score);
+
+  // grade
+  const grade = score>=90?'A+':score>=80?'A':score>=70?'B':score>=60?'C':'D';
+  const gradeColor = score>=80?'#22c55e':score>=60?'#f59e0b':'#f87171';
+  const gradeEl = document.getElementById('scoreGrade');
+  gradeEl.textContent = grade;
+  gradeEl.style.color = gradeColor;
+
+  // insight
+  document.getElementById('scoreInsight').textContent = res.insight;
+
+  // sim cards
+  const g = res.graph;
+  const base = g['Current'];
+  fillSim('simSleep','simSleepD', g['Better Sleep'], base);
+  fillSim('simPhone','simPhoneD', g['Less Phone'], base);
+  fillSim('simStudy','simStudyD', g['More Study'], base);
+
+  // chart
+  showMain();
+}
+
+function fillSim(valId, deltaId, val, base){
+  document.getElementById(valId).textContent = Math.round(val*10)/10;
+  const delta = Math.round((val-base)*10)/10;
+  const el = document.getElementById(deltaId);
+  el.textContent = (delta>=0?'+':'')+delta+' pts';
+  el.className = 'sim-delta '+(delta>=0?'pos':'neg');
+}
+
+/* ── RING CHART ───────────────────────────────────────────── */
+function drawRing(score){
+  if(ringChart) ringChart.destroy();
+  const pct = Math.min(Math.max(score,0),100);
+  const ctx = document.getElementById('ringCanvas').getContext('2d');
+  ringChart = new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      datasets:[{
+        data:[pct,100-pct],
+        backgroundColor:['#3b82f6','rgba(255,255,255,0.05)'],
+        borderWidth:0,
+        circumference:270,
+        rotation:225
+      }]
+    },
+    options:{
+      cutout:'80%',
+      plugins:{legend:{display:false},tooltip:{enabled:false}},
+      animation:{duration:800}
+    }
+  });
+}
+
+/* ── MAIN CHART ───────────────────────────────────────────── */
+function showMain(){
+  if(!savedRes) return;
+  const g = savedRes.graph;
+  updateMainChart(Object.keys(g), Object.values(g), 'Scenario Comparison');
+}
+function showGraph(type){
+  if(!savedRes) return;
+  const vals = savedRes.individual_graphs[type];
+  let labels=[];
+  if(type==='hours') for(let i=1;i<=10;i++) labels.push(i+' hrs');
+  if(type==='tests') for(let i=1;i<=15;i++) labels.push(i);
+  if(type==='sleep') for(let i=3;i<=10;i++) labels.push(i+' hrs');
+  if(type==='phone') for(let i=1;i<=10;i++) labels.push(i+' hrs');
+  updateMainChart(labels, vals, 'Score vs '+type.charAt(0).toUpperCase()+type.slice(1));
+}
+function activateCtab(btn){
+  document.querySelectorAll('.ctab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function updateMainChart(labels,values,label){
+  if(mainChart) mainChart.destroy();
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  const grad = ctx.createLinearGradient(0,0,0,200);
+  grad.addColorStop(0,'rgba(59,130,246,0.3)');
+  grad.addColorStop(1,'rgba(59,130,246,0)');
+  mainChart = new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:labels,
+      datasets:[{
+        label:label,
+        data:values,
+        borderColor:'#3b82f6',
+        backgroundColor:grad,
+        borderWidth:2,
+        pointRadius:4,
+        pointBackgroundColor:'#3b82f6',
+        pointBorderColor:'#020818',
+        pointBorderWidth:2,
+        fill:true,
+        tension:0.35
+      }]
+    },
+    options:{
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'rgba(2,8,24,0.9)',
+        borderColor:'rgba(59,130,246,0.3)',
+        borderWidth:1,
+        titleFont:{family:'Space Grotesk',size:12},
+        bodyFont:{family:'JetBrains Mono',size:13},
+        callbacks:{label:ctx=>' Score: '+Math.round(ctx.parsed.y*10)/10}
+      }},
+      scales:{
+        x:{
+          grid:{color:'rgba(255,255,255,0.04)'},
+          ticks:{color:'#64748b',font:{family:'Space Grotesk',size:11}}
+        },
+        y:{
+          grid:{color:'rgba(255,255,255,0.04)'},
+          ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:11}}
+        }
+      },
+      animation:{duration:600}
+    }
+  });
+}
+</script>
+</body>
+</html>
