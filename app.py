@@ -2,14 +2,23 @@ from flask import Flask, render_template, request, jsonify
 import pickle
 import numpy as np
 from scipy import stats
+import os
 
 app = Flask(__name__)
 
-with open("model.pkl", "rb") as f:
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "model.pkl")
+with open(MODEL_PATH, "rb") as f:
     model = pickle.load(f)
 
-with open("extras.pkl", "rb") as f:
+# with open("model.pkl", "rb") as f:
+#     model = pickle.load(f)
+
+MODEL_PATH1 = os.path.join(os.path.dirname(__file__), "model", "extras.pkl")
+with open(MODEL_PATH1, "rb") as f:
     extras = pickle.load(f)
+
+# with open("extras.pkl", "rb") as f:
+#     extras = pickle.load(f)
 
 
 @app.route("/")
@@ -241,4 +250,4 @@ def report():
     })
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
